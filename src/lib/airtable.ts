@@ -505,10 +505,34 @@ export async function claimDeal(
   dealId: string,
   claimedUnits: number
 ): Promise<void> {
-  await tables.clientDeals.update(dealId, {
-    "Claimed Units": claimedUnits,
-    "Claim Date": new Date().toISOString(),
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  const apiKey = process.env.AIRTABLE_API_KEY;
+
+  if (!baseId || !apiKey) {
+    throw new Error("Missing Airtable credentials");
+  }
+
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent("Client Deals")}/${dealId}`;
+
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fields: {
+        "Claimed Units": claimedUnits,
+        "Claim Date": new Date().toISOString().split("T")[0],
+      },
+    }),
   });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error("Airtable claim error:", errorData);
+    throw new Error(`Failed to claim deal: ${response.statusText}`);
+  }
 }
 
 export async function updateDealStatus(
@@ -631,21 +655,27 @@ export async function batchCreateDeals(
 // ============ CLAIMS HISTORY ============
 
 export async function getClaimsHistory(): Promise<ClaimHistory[]> {
-  const records = await tables.claimsHistory.select().all();
-
-  return records.map((record) => ({
-    id: record.id,
-    claimId: (record.get("Claim ID") as number) || 0,
-    deal: (record.get("Deal") as string[]) || [],
-    quantityClaimed: (record.get("Quantity Claimed") as number) || 0,
-    claimTimestamp: (record.get("Claim Timestamp") as string) || "",
-    status: (record.get("Status") as string) || "Submitted",
-    fulfillmentDate: (record.get("Fulfillment Date") as string) || "",
-    fulfillmentNotes: (record.get("Fulfillment Notes") as string) || "",
-    productName: (record.get("Product Name") as string) || "",
-    clientName: (record.get("Client Name") as string) || "",
-    snapshotPrice: (record.get("Snapshot Price") as number) || 0,
-    snapshotROI: (record.get("Snapshot ROI") as number) || 0,
-    totalValue: (record.get("Total Value") as number) || 0,
-  }));
+  try {
+    // Use REST API to avoid AbortSignal issues
+    const records = await fetchFromAirtable("Claims History");
+    
+    return records.map((record) => ({
+      id: record.id,
+      claimId: (record.fields["Claim ID"] as number) || 0,
+      deal: (record.fields["Deal"] as string[]) || [],
+      quantityClaimed: (record.fields["Quantity Claimed"] as number) || 0,
+      claimTimestamp: (record.fields["Claim Timestamp"] as string) || "",
+      status: (record.fields["Status"] as string) || "Submitted",
+      fulfillmentDate: (record.fields["Fulfillment Date"] as string) || "",
+      fulfillmentNotes: (record.fields["Fulfillment Notes"] as string) || "",
+      productName: (record.fields["Product Name"] as string) || "",
+      clientName: (record.fields["Client Name"] as string) || "",
+      snapshotPrice: (record.fields["Snapshot Price"] as number) || 0,
+      snapshotROI: (record.fields["Snapshot ROI"] as number) || 0,
+      totalValue: (record.fields["Total Value"] as number) || 0,
+    }));
+  } catch (error) {
+    console.error("Error fetching claims history:", error);
+    return [];
+  }
 }
