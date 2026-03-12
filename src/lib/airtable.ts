@@ -17,29 +17,90 @@ export const tables = {
   createDealsBatch: base("Create Deals - Batch"),
 };
 
+// ============ REST API HELPER ============
+// Use REST API directly to avoid AbortSignal issues in serverless
+
+interface AirtableRecord {
+  id: string;
+  fields: Record<string, unknown>;
+}
+
+interface AirtableResponse {
+  records: AirtableRecord[];
+  offset?: string;
+}
+
+async function fetchFromAirtable(
+  tableName: string,
+  options?: { filterByFormula?: string; maxRecords?: number }
+): Promise<AirtableRecord[]> {
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  const apiKey = process.env.AIRTABLE_API_KEY;
+
+  if (!baseId || !apiKey) {
+    console.error("Missing Airtable credentials");
+    return [];
+  }
+
+  const params = new URLSearchParams();
+  if (options?.filterByFormula) {
+    params.append("filterByFormula", options.filterByFormula);
+  }
+  if (options?.maxRecords) {
+    params.append("maxRecords", options.maxRecords.toString());
+  }
+
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}?${params.toString()}`;
+
+  const allRecords: AirtableRecord[] = [];
+  let offset: string | undefined;
+
+  do {
+    const fetchUrl = offset ? `${url}&offset=${offset}` : url;
+    const response = await fetch(fetchUrl, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`Airtable API error: ${response.status} ${response.statusText}`);
+      return allRecords;
+    }
+
+    const data: AirtableResponse = await response.json();
+    allRecords.push(...(data.records || []));
+    offset = data.offset;
+  } while (offset);
+
+  return allRecords;
+}
+
 // ============ PRODUCTS ============
 
 export async function getProducts(): Promise<Product[]> {
   try {
-    const records = await tables.masterInventory
-      .select({ filterByFormula: "{Status} = 'Active'" })
-      .all();
+    // Use REST API directly to avoid AbortSignal issues
+    const records = await fetchFromAirtable("Master Inventory", {
+      filterByFormula: "{Status} = 'Active'",
+    });
 
     console.log(`Fetched ${records.length} products from Master Inventory`);
 
     return records.map((record) => ({
       id: record.id,
-      productName: (record.get("Product Name") as string) || "",
-      walmartLink: (record.get("Walmart Link") as string) || "",
-      walmartRetailPrice: (record.get("Walmart Retail Price") as number) || 0,
-      lindaActualCost: (record.get("Linda's Actual Cost") as number) || 0,
-      walmartFees: (record.get("Walmart Fees") as number) || 0,
-      unitsAvailable: (record.get("Units Available") as number) || 0,
-      unitsRemaining: (record.get("Units Remaining") as number) || 0,
-      leadTime: (record.get("Lead Time") as string) || "Ready to Ship",
-      status: (record.get("Status") as string) || "Active",
-      internalStatus: (record.get("Internal Status") as string) || "Proposed / Potential",
-      inventoryStatus: (record.get("Inventory Status") as string) || "Available",
+      productName: (record.fields["Product Name"] as string) || "",
+      walmartLink: (record.fields["Walmart Link"] as string) || "",
+      walmartRetailPrice: (record.fields["Walmart Retail Price"] as number) || 0,
+      lindaActualCost: (record.fields["Linda's Actual Cost"] as number) || 0,
+      walmartFees: (record.fields["Walmart Fees"] as number) || 0,
+      unitsAvailable: (record.fields["Units Available"] as number) || 0,
+      unitsRemaining: (record.fields["Units Remaining"] as number) || 0,
+      leadTime: (record.fields["Lead Time"] as string) || "Ready to Ship",
+      status: (record.fields["Status"] as string) || "Active",
+      internalStatus: (record.fields["Internal Status"] as string) || "Proposed / Potential",
+      inventoryStatus: (record.fields["Inventory Status"] as string) || "Available",
     }));
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -110,16 +171,17 @@ export async function updateProduct(
 
 export async function getClients(): Promise<Client[]> {
   try {
-    const records = await tables.clients.select().all();
+    // Use REST API directly to avoid AbortSignal issues
+    const records = await fetchFromAirtable("Clients");
     console.log(`Fetched ${records.length} clients from Clients table`);
 
     return records.map((record) => ({
       id: record.id,
-      clientName: (record.get("Client Name") as string) || "",
-      contactEmail: (record.get("Contact Email") as string) || "",
-      company: (record.get("Company") as string) || "",
-      phone: (record.get("Phone") as string) || "",
-      notes: (record.get("Notes") as string) || "",
+      clientName: (record.fields["Client Name"] as string) || "",
+      contactEmail: (record.fields["Contact Email"] as string) || "",
+      company: (record.fields["Company"] as string) || "",
+      phone: (record.fields["Phone"] as string) || "",
+      notes: (record.fields["Notes"] as string) || "",
     }));
   } catch (error) {
     console.error("Error fetching clients:", error);
@@ -219,19 +281,24 @@ export async function updateClient(
 
 export async function getDealsForClient(clientId: string): Promise<Deal[]> {
   try {
-    const records = await tables.clientDeals
-      .select({
-        filterByFormula: `{Status} = 'Active'`,
-      })
-      .all();
+    console.log(`Fetching deals for client: ${clientId}`);
+    
+    // Use REST API directly to avoid AbortSignal issues
+    const records = await fetchFromAirtable("Client Deals", {
+      filterByFormula: `{Status} = 'Active'`,
+    });
+
+    console.log(`Found ${records.length} active deals total`);
 
     // Filter deals that belong to this client
     const clientDeals = records.filter((record) => {
-      const clientField = record.get("Client") as string[] | undefined;
+      const clientField = record.fields["Client"] as string[] | undefined;
       return clientField && clientField.includes(clientId);
     });
 
-    return clientDeals.map((record) => mapDealRecord(record));
+    console.log(`Found ${clientDeals.length} deals for this client`);
+
+    return clientDeals.map((record) => mapDealRecordFromRest(record));
   } catch (error) {
     console.error("Error fetching deals for client:", error);
     return [];
@@ -240,8 +307,10 @@ export async function getDealsForClient(clientId: string): Promise<Deal[]> {
 
 export async function getAllDeals(): Promise<Deal[]> {
   try {
-    const records = await tables.clientDeals.select().all();
-    return records.map((record) => mapDealRecord(record));
+    // Use REST API directly to avoid AbortSignal issues
+    const records = await fetchFromAirtable("Client Deals");
+    console.log(`Fetched ${records.length} total deals`);
+    return records.map((record) => mapDealRecordFromRest(record));
   } catch (error) {
     console.error("Error fetching all deals:", error);
     return [];
@@ -309,6 +378,64 @@ function mapDealRecord(record: Airtable.Record<Airtable.FieldSet>): Deal {
     snapshotPrice: (record.get("Snapshot - Price") as number) || 0,
     snapshotClientROI: (record.get("Snapshot - Client ROI") as number) || 0,
     snapshotClientProfit: (record.get("Snapshot - Client Profit") as number) || 0,
+  };
+}
+
+// REST API version of mapDealRecord
+function mapDealRecordFromRest(record: AirtableRecord): Deal {
+  const fields = record.fields;
+  
+  // Handle various lookup field naming conventions
+  const productName = 
+    (fields["Product Name"] as string) ||
+    (fields["Product Name (from Product)"] as string[])?.join(", ") ||
+    "";
+  
+  const clientName = 
+    (fields["Client Name"] as string) ||
+    (fields["Client Name (from Client)"] as string[])?.join(", ") ||
+    "";
+  
+  const clientEmail = 
+    (fields["Contact Email"] as string) ||
+    (fields["Claimed By Email"] as string) ||
+    (fields["Contact Email (from Client)"] as string[])?.join(", ") ||
+    "";
+
+  const unitsRemainingRaw = fields["Units Remaining"];
+  const unitsRemaining = 
+    typeof unitsRemainingRaw === "number" ? unitsRemainingRaw :
+    Array.isArray(unitsRemainingRaw) ? (unitsRemainingRaw as number[])[0] || 0 :
+    0;
+
+  const leadTimeRaw = fields["Lead Time"];
+  const leadTime = 
+    typeof leadTimeRaw === "string" ? leadTimeRaw :
+    Array.isArray(leadTimeRaw) ? (leadTimeRaw as string[])[0] || "Ready to Ship" :
+    "Ready to Ship";
+
+  return {
+    id: record.id,
+    dealId: (fields["Deal ID"] as number) || 0,
+    product: (fields["Product"] as string[]) || [],
+    productName,
+    client: (fields["Client"] as string[]) || [],
+    clientName,
+    clientEmail,
+    lindaSellingPrice: (fields["Linda's Selling Price"] as number) || 0,
+    clientProfit: (fields["Client's Profit"] as number) || 0,
+    clientROI: (fields["Client's ROI (%)"] as number) || 0,
+    lindaProfit: (fields["Linda's Profit"] as number) || 0,
+    lindaROI: (fields["Linda's ROI (%)"] as number) || 0,
+    unitsRemaining,
+    leadTime,
+    claimedUnits: (fields["Claimed Units"] as number) || 0,
+    claimDate: (fields["Claim Date"] as string) || "",
+    claimStatus: (fields["Claim Status"] as string) || "Not Claimed",
+    status: (fields["Status"] as string) || "Active",
+    snapshotPrice: (fields["Snapshot - Price"] as number) || 0,
+    snapshotClientROI: (fields["Snapshot - Client ROI"] as number) || 0,
+    snapshotClientProfit: (fields["Snapshot - Client Profit"] as number) || 0,
   };
 }
 
