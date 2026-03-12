@@ -9,11 +9,20 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
+import { ClaimHistory } from "@/types";
 
 export default async function ClaimsPage() {
-  const claims = await getClaimsHistory();
+  let claims: ClaimHistory[] = [];
+  let error: string | null = null;
+
+  try {
+    claims = await getClaimsHistory();
+  } catch (e) {
+    console.error("Error loading claims:", e);
+    error = "Failed to load claims history. The Claims History table may not exist in Airtable.";
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -47,6 +56,24 @@ export default async function ClaimsPage() {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3 text-yellow-800">
+              <AlertCircle className="h-5 w-5" />
+              <div>
+                <p className="font-medium">Note</p>
+                <p className="text-sm">{error}</p>
+                <p className="text-sm mt-1">
+                  To track claims history, create a &quot;Claims History&quot; table in Airtable with the automation from the setup guide.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Claims Table */}
       <Card>
         <CardHeader>
@@ -55,7 +82,7 @@ export default async function ClaimsPage() {
         <CardContent>
           {claims.length === 0 ? (
             <p className="text-gray-500 text-center py-12">
-              No claims recorded yet
+              {error ? "Unable to load claims" : "No claims recorded yet"}
             </p>
           ) : (
             <Table>

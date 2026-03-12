@@ -65,11 +65,18 @@ async function fetchFromAirtable(
     });
 
     if (!response.ok) {
-      console.error(`Airtable API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`Airtable API error: ${response.status} ${response.statusText}`, errorText);
       return allRecords;
     }
 
-    const data: AirtableResponse = await response.json();
+    let data: AirtableResponse;
+    try {
+      data = await response.json();
+    } catch {
+      console.error("Failed to parse Airtable response");
+      return allRecords;
+    }
     allRecords.push(...(data.records || []));
     offset = data.offset;
   } while (offset);
@@ -659,21 +666,27 @@ export async function getClaimsHistory(): Promise<ClaimHistory[]> {
     // Use REST API to avoid AbortSignal issues
     const records = await fetchFromAirtable("Claims History");
     
-    return records.map((record) => ({
-      id: record.id,
-      claimId: (record.fields["Claim ID"] as number) || 0,
-      deal: (record.fields["Deal"] as string[]) || [],
-      quantityClaimed: (record.fields["Quantity Claimed"] as number) || 0,
-      claimTimestamp: (record.fields["Claim Timestamp"] as string) || "",
-      status: (record.fields["Status"] as string) || "Submitted",
-      fulfillmentDate: (record.fields["Fulfillment Date"] as string) || "",
-      fulfillmentNotes: (record.fields["Fulfillment Notes"] as string) || "",
-      productName: (record.fields["Product Name"] as string) || "",
-      clientName: (record.fields["Client Name"] as string) || "",
-      snapshotPrice: (record.fields["Snapshot Price"] as number) || 0,
-      snapshotROI: (record.fields["Snapshot ROI"] as number) || 0,
-      totalValue: (record.fields["Total Value"] as number) || 0,
-    }));
+    return records.map((record) => {
+      // Handle lookup fields that return arrays
+      const productNameField = record.fields["Product Name"];
+      const clientNameField = record.fields["Client Name"];
+      
+      return {
+        id: record.id,
+        claimId: (record.fields["Claim ID"] as number) || 0,
+        deal: (record.fields["Deal"] as string[]) || [],
+        quantityClaimed: (record.fields["Quantity Claimed"] as number) || 0,
+        claimTimestamp: (record.fields["Claim Timestamp"] as string) || "",
+        status: (record.fields["Status"] as string) || "Submitted",
+        fulfillmentDate: (record.fields["Fulfillment Date"] as string) || "",
+        fulfillmentNotes: (record.fields["Fulfillment Notes"] as string) || "",
+        productName: Array.isArray(productNameField) ? productNameField[0] || "" : (productNameField as string) || "",
+        clientName: Array.isArray(clientNameField) ? clientNameField[0] || "" : (clientNameField as string) || "",
+        snapshotPrice: (record.fields["Snapshot Price"] as number) || 0,
+        snapshotROI: (record.fields["Snapshot ROI"] as number) || 0,
+        totalValue: (record.fields["Total Value"] as number) || 0,
+      };
+    });
   } catch (error) {
     console.error("Error fetching claims history:", error);
     return [];
