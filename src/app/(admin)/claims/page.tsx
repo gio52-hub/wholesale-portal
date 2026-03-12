@@ -1,4 +1,3 @@
-import { getClaimsHistory } from "@/lib/airtable";
 import {
   Table,
   TableBody,
@@ -13,16 +12,22 @@ import { ClipboardList, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ClaimHistory } from "@/types";
 
-export default async function ClaimsPage() {
-  let claims: ClaimHistory[] = [];
-  let error: string | null = null;
-
+async function fetchClaimsHistory(): Promise<{ claims: ClaimHistory[]; error: string | null }> {
   try {
-    claims = await getClaimsHistory();
+    const { getClaimsHistory } = await import("@/lib/airtable");
+    const claims = await getClaimsHistory();
+    return { claims: claims || [], error: null };
   } catch (e) {
     console.error("Error loading claims:", e);
-    error = "Failed to load claims history. The Claims History table may not exist in Airtable.";
+    return { 
+      claims: [], 
+      error: "Failed to load claims history. Please check Airtable configuration." 
+    };
   }
+}
+
+export default async function ClaimsPage() {
+  const { claims, error } = await fetchClaimsHistory();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -109,17 +114,21 @@ export default async function ClaimsPage() {
                     </TableCell>
                     <TableCell>{claim.clientName}</TableCell>
                     <TableCell>{claim.quantityClaimed}</TableCell>
-                    <TableCell>${claim.snapshotPrice?.toFixed(2)}</TableCell>
+                    <TableCell>${(claim.snapshotPrice || 0).toFixed(2)}</TableCell>
                     <TableCell className="font-semibold">
-                      ${claim.totalValue?.toFixed(2)}
+                      ${(claim.totalValue || 0).toFixed(2)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(claim.status)}</TableCell>
+                    <TableCell>{getStatusBadge(claim.status || "Unknown")}</TableCell>
                     <TableCell className="text-gray-500">
                       {claim.claimTimestamp
-                        ? format(
-                            new Date(claim.claimTimestamp),
-                            "MMM d, yyyy HH:mm"
-                          )
+                        ? (() => {
+                            try {
+                              const date = new Date(claim.claimTimestamp);
+                              return isNaN(date.getTime()) ? "-" : format(date, "MMM d, yyyy HH:mm");
+                            } catch {
+                              return "-";
+                            }
+                          })()
                         : "-"}
                     </TableCell>
                   </TableRow>
