@@ -582,6 +582,13 @@ export async function batchCreateDeals(
   productIds: string[],
   defaultPrice?: number
 ): Promise<number> {
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  const apiKey = process.env.AIRTABLE_API_KEY;
+
+  if (!baseId || !apiKey) {
+    throw new Error("Missing Airtable credentials");
+  }
+
   const records = productIds.map((productId) => ({
     fields: {
       Product: [productId],
@@ -591,11 +598,31 @@ export async function batchCreateDeals(
     },
   }));
 
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent("Client Deals")}`;
+  
   let created = 0;
+  
+  // Airtable allows max 10 records per request
   for (let i = 0; i < records.length; i += 10) {
     const batch = records.slice(i, i + 10);
-    await tables.clientDeals.create(batch.map((r) => r.fields));
-    created += batch.length;
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ records: batch }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Airtable batch create error:", errorData);
+      throw new Error(`Failed to create deals: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    created += result.records?.length || 0;
   }
 
   return created;
