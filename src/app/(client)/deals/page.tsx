@@ -1,19 +1,19 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getProducts } from "@/lib/airtable";
-import ProductCard from "@/components/products/product-card";
+import { getDealsForClient } from "@/lib/airtable";
+import DealCard from "@/components/deals/deal-card";
 import { Package, Search } from "lucide-react";
 
 export default async function DealsPage() {
   const session = await getServerSession(authOptions);
-  const clientId = session?.user?.clientId || "";
+  const clientId = session?.user?.clientId;
 
-  // Fetch all available products from Master Inventory
-  const products = await getProducts();
+  // Fetch deals assigned to this client
+  const deals = clientId ? await getDealsForClient(clientId) : [];
 
-  // Filter products that have units available
-  const availableProducts = products.filter(
-    (product) => (product.unitsRemaining || product.unitsAvailable || 0) > 0
+  // Filter deals that are available to claim (not yet claimed)
+  const availableDeals = deals.filter(
+    (deal) => !deal.claimStatus || deal.claimStatus === "Not Claimed"
   );
 
   return (
@@ -23,37 +23,37 @@ export default async function DealsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">My Deals</h1>
           <p className="text-gray-600 mt-1">
-            Browse available products and place orders
+            Your personalized deals - browse and claim units
           </p>
         </div>
         <div className="flex items-center space-x-2 text-sm text-gray-500 bg-white px-4 py-2 rounded-lg shadow-sm">
           <Package className="h-4 w-4" />
           <span>
             <span className="font-semibold text-primary">
-              {availableProducts.length}
+              {availableDeals.length}
             </span>{" "}
-            products available
+            deals available
           </span>
         </div>
       </div>
 
-      {/* Products Grid */}
-      {availableProducts.length === 0 ? (
+      {/* Deals Grid */}
+      {availableDeals.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl shadow-sm">
           <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
             <Search className="h-8 w-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900">
-            No products available
+            No deals available
           </h3>
           <p className="text-gray-500 mt-1">
-            Check back later for new products.
+            All your deals have been claimed. Check back later for new offers.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {availableProducts.map((product) => (
-            <ProductCard key={product.id} product={product} clientId={clientId} />
+          {availableDeals.map((deal) => (
+            <DealCard key={deal.id} deal={deal} />
           ))}
         </div>
       )}

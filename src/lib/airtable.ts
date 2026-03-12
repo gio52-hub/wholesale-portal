@@ -284,19 +284,21 @@ export async function getDealsForClient(clientId: string): Promise<Deal[]> {
     console.log(`Fetching deals for client: ${clientId}`);
     
     // Use REST API directly to avoid AbortSignal issues
-    const records = await fetchFromAirtable("Client Deals", {
-      filterByFormula: `{Status} = 'Active'`,
-    });
+    // Fetch all deals (don't filter by Status to handle various field values)
+    const records = await fetchFromAirtable("Client Deals");
 
-    console.log(`Found ${records.length} active deals total`);
+    console.log(`Found ${records.length} total deals in Client Deals table`);
 
     // Filter deals that belong to this client
     const clientDeals = records.filter((record) => {
       const clientField = record.fields["Client"] as string[] | undefined;
-      return clientField && clientField.includes(clientId);
+      const status = record.fields["Status"] as string | undefined;
+      // Include deals that are Active or have no Status set (default to active)
+      const isActive = !status || status === "Active";
+      return clientField && clientField.includes(clientId) && isActive;
     });
 
-    console.log(`Found ${clientDeals.length} deals for this client`);
+    console.log(`Found ${clientDeals.length} deals for client ${clientId}`);
 
     return clientDeals.map((record) => mapDealRecordFromRest(record));
   } catch (error) {
