@@ -84,7 +84,7 @@ export async function updateProduct(
   id: string,
   data: Partial<Product>
 ): Promise<void> {
-  const fields: Record<string, unknown> = {};
+  const fields: Airtable.FieldSet = {};
   if (data.productName !== undefined) fields["Product Name"] = data.productName;
   if (data.walmartLink !== undefined) fields["Walmart Link"] = data.walmartLink;
   if (data.walmartRetailPrice !== undefined)
@@ -178,7 +178,7 @@ export async function updateClient(
   id: string,
   data: Partial<Client>
 ): Promise<void> {
-  const fields: Record<string, unknown> = {};
+  const fields: Airtable.FieldSet = {};
   if (data.clientName !== undefined) fields["Client Name"] = data.clientName;
   if (data.contactEmail !== undefined)
     fields["Contact Email"] = data.contactEmail;
@@ -249,14 +249,16 @@ function mapDealRecord(record: Airtable.Record<Airtable.FieldSet>): Deal {
     (record.get("Contact Email (from Client)") as string[])?.join(", ") ||
     "";
 
+  const unitsRemainingRaw = record.get("Units Remaining");
   const unitsRemaining = 
-    (record.get("Units Remaining") as number) ||
-    ((record.get("Units Remaining") as number[]))?.[0] ||
+    typeof unitsRemainingRaw === "number" ? unitsRemainingRaw :
+    Array.isArray(unitsRemainingRaw) ? (unitsRemainingRaw as unknown as number[])[0] || 0 :
     0;
 
+  const leadTimeRaw = record.get("Lead Time");
   const leadTime = 
-    (record.get("Lead Time") as string) ||
-    ((record.get("Lead Time") as string[]))?.[0] ||
+    typeof leadTimeRaw === "string" ? leadTimeRaw :
+    Array.isArray(leadTimeRaw) ? (leadTimeRaw as string[])[0] || "Ready to Ship" :
     "Ready to Ship";
 
   return {
