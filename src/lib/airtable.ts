@@ -84,6 +84,20 @@ async function fetchFromAirtable(
   return allRecords;
 }
 
+// Helper to parse numeric fields that might be arrays (lookups) or strings
+function parseNumericField(value: unknown): number {
+  if (value === null || value === undefined) return 0;
+  if (Array.isArray(value)) {
+    return parseFloat(String(value[0])) || 0;
+  }
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    // Remove currency symbols and parse
+    return parseFloat(value.replace(/[$,]/g, "")) || 0;
+  }
+  return 0;
+}
+
 // ============ PRODUCTS ============
 
 export async function getProducts(): Promise<Product[]> {
@@ -682,9 +696,9 @@ export async function getClaimsHistory(): Promise<ClaimHistory[]> {
         fulfillmentNotes: (record.fields["Fulfillment Notes"] as string) || "",
         productName: Array.isArray(productNameField) ? productNameField[0] || "" : (productNameField as string) || "",
         clientName: Array.isArray(clientNameField) ? clientNameField[0] || "" : (clientNameField as string) || "",
-        snapshotPrice: (record.fields["Snapshot Price"] as number) || 0,
-        snapshotROI: (record.fields["Snapshot ROI"] as number) || 0,
-        totalValue: (record.fields["Total Value"] as number) || 0,
+        snapshotPrice: parseNumericField(record.fields["Snapshot Price"]),
+        snapshotROI: parseNumericField(record.fields["Snapshot ROI"]),
+        totalValue: parseNumericField(record.fields["Total Value"]),
       };
     });
   } catch (error) {

@@ -114,9 +114,9 @@ export default async function ClaimsPage() {
                     </TableCell>
                     <TableCell>{claim.clientName}</TableCell>
                     <TableCell>{claim.quantityClaimed}</TableCell>
-                    <TableCell>${(claim.snapshotPrice || 0).toFixed(2)}</TableCell>
+                    <TableCell>${Number(claim.snapshotPrice || 0).toFixed(2)}</TableCell>
                     <TableCell className="font-semibold">
-                      ${(claim.totalValue || 0).toFixed(2)}
+                      ${Number(claim.totalValue || 0).toFixed(2)}
                     </TableCell>
                     <TableCell>{getStatusBadge(claim.status || "Unknown")}</TableCell>
                     <TableCell className="text-gray-500">
