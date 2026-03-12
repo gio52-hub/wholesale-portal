@@ -371,6 +371,12 @@ function mapDealRecord(record: Airtable.Record<Airtable.FieldSet>): Deal {
     Array.isArray(walmartFeesRaw) ? (walmartFeesRaw as unknown as number[])[0] || 0 :
     0;
 
+  // Get Client's Total Fees (formula field)
+  const clientTotalFeesRaw = record.get("Client's Total Fees");
+  const clientTotalFees = 
+    typeof clientTotalFeesRaw === "number" ? clientTotalFeesRaw :
+    walmartFees; // Fallback to Walmart Fees
+
   const walmartLinkRaw = record.get("Walmart Link");
   const walmartLink = 
     typeof walmartLinkRaw === "string" ? walmartLinkRaw :
@@ -388,6 +394,7 @@ function mapDealRecord(record: Airtable.Record<Airtable.FieldSet>): Deal {
     lindaSellingPrice: (record.get("Linda's Selling Price") as number) || 0,
     walmartRetailPrice,
     walmartFees,
+    clientTotalFees,
     walmartLink,
     clientProfit: (record.get("Client's Profit") as number) || 0,
     clientROI: (record.get("Client's ROI (%)") as number) || 0,
@@ -452,6 +459,12 @@ function mapDealRecordFromRest(record: AirtableRecord): Deal {
     Array.isArray(walmartFeesRaw) ? (walmartFeesRaw as number[])[0] || 0 :
     0;
 
+  // Get Client's Total Fees (formula field: Walmart Fees + Prep Fee)
+  const clientTotalFeesRaw = fields["Client's Total Fees"];
+  const clientTotalFees = 
+    typeof clientTotalFeesRaw === "number" ? clientTotalFeesRaw :
+    walmartFees; // Fallback to Walmart Fees if Client's Total Fees doesn't exist
+
   // Get Walmart Link (lookup field)
   const walmartLinkRaw = fields["Walmart Link"];
   const walmartLink = 
@@ -470,6 +483,7 @@ function mapDealRecordFromRest(record: AirtableRecord): Deal {
     lindaSellingPrice: (fields["Linda's Selling Price"] as number) || 0,
     walmartRetailPrice,
     walmartFees,
+    clientTotalFees,
     walmartLink,
     clientProfit: (fields["Client's Profit"] as number) || 0,
     clientROI: (fields["Client's ROI (%)"] as number) || 0,

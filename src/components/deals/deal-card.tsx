@@ -86,7 +86,7 @@ export default function DealCard({ deal }: DealCardProps) {
                 Est. Fees
               </div>
               <div className="text-lg font-bold text-gray-900">
-                ${deal.walmartFees?.toFixed(2) || "0.00"}
+                ${deal.clientTotalFees?.toFixed(2) || deal.walmartFees?.toFixed(2) || "0.00"}
               </div>
             </div>
             <div className="bg-gray-50 p-2.5 rounded-lg">

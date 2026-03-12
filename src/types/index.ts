@@ -34,6 +34,7 @@ export interface Deal {
   lindaSellingPrice: number;
   walmartRetailPrice: number;
   walmartFees: number;
+  clientTotalFees: number;
   walmartLink: string;
   clientProfit: number;
   clientROI: number;
