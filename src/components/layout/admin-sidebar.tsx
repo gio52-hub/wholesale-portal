@@ -33,13 +33,15 @@ export default function AdminSidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-white/10">
         <Link href="/dashboard" className="flex items-center justify-center">
-          <Image
-            src="/logo.jpg"
-            alt="Smart Launch"
-            width={150}
-            height={40}
-            className="h-8 w-auto brightness-0 invert"
-          />
+          <div className="bg-white rounded-lg p-2">
+            <Image
+              src="/logo.jpg"
+              alt="Smart Launch"
+              width={120}
+              height={32}
+              className="h-6 w-auto"
+            />
+          </div>
         </Link>
         <p className="text-center text-xs text-gray-400 mt-2">Admin Portal</p>
       </div>
