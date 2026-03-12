@@ -1,9 +1,13 @@
 import Airtable from "airtable";
 import { Product, Client, Deal, ClaimHistory } from "@/types";
 
-const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
-  process.env.AIRTABLE_BASE_ID!
-);
+// Configure Airtable with extended timeout for serverless environments
+Airtable.configure({
+  apiKey: process.env.AIRTABLE_API_KEY,
+  endpointUrl: "https://api.airtable.com",
+});
+
+const base = Airtable.base(process.env.AIRTABLE_BASE_ID!);
 
 export const tables = {
   masterInventory: base("Master Inventory"),
@@ -126,21 +130,43 @@ export async function getClients(): Promise<Client[]> {
 export async function getClientByEmail(email: string): Promise<Client | null> {
   try {
     console.log(`Looking for client with email: ${email}`);
-    const records = await tables.clients
-      .select({ filterByFormula: `LOWER({Contact Email}) = '${email.toLowerCase()}'` })
-      .all();
+    
+    // Use REST API directly to avoid AbortSignal issues in serverless
+    const baseId = process.env.AIRTABLE_BASE_ID;
+    const apiKey = process.env.AIRTABLE_API_KEY;
+    
+    if (!baseId || !apiKey) {
+      console.error("Missing Airtable credentials");
+      return null;
+    }
 
-    console.log(`Found ${records.length} clients matching email`);
+    const formula = encodeURIComponent(`LOWER({Contact Email}) = '${email.toLowerCase()}'`);
+    const url = `https://api.airtable.com/v0/${baseId}/Clients?filterByFormula=${formula}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-    if (records.length === 0) return null;
+    if (!response.ok) {
+      console.error(`Airtable API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
 
-    const record = records[0];
+    const data = await response.json();
+    console.log(`Found ${data.records?.length || 0} clients matching email`);
+
+    if (!data.records || data.records.length === 0) return null;
+
+    const record = data.records[0];
     return {
       id: record.id,
-      clientName: (record.get("Client Name") as string) || "",
-      contactEmail: (record.get("Contact Email") as string) || "",
-      company: (record.get("Company") as string) || "",
-      phone: (record.get("Phone") as string) || "",
+      clientName: record.fields["Client Name"] || "",
+      contactEmail: record.fields["Contact Email"] || "",
+      company: record.fields["Company"] || "",
+      phone: record.fields["Phone"] || "",
     };
   } catch (error) {
     console.error("Error fetching client by email:", error);
