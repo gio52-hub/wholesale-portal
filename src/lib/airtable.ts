@@ -473,6 +473,48 @@ export async function createDeal(data: {
   return record.id;
 }
 
+export async function createClientDeal(data: {
+  productId: string;
+  clientId: string;
+  claimedUnits: number;
+}): Promise<string> {
+  // Create a new Client Deal with claimed units (order from client portal)
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  const apiKey = process.env.AIRTABLE_API_KEY;
+
+  if (!baseId || !apiKey) {
+    throw new Error("Missing Airtable credentials");
+  }
+
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent("Client Deals")}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fields: {
+        Product: [data.productId],
+        Client: [data.clientId],
+        "Claimed Units": data.claimedUnits,
+        "Claim Date": new Date().toISOString().split("T")[0],
+        Status: "Active",
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error("Airtable error:", errorData);
+    throw new Error("Failed to create client deal");
+  }
+
+  const result = await response.json();
+  return result.id;
+}
+
 export async function batchCreateDeals(
   clientId: string,
   productIds: string[],
