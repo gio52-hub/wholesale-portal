@@ -32,6 +32,9 @@ export interface Deal {
   clientName: string;
   clientEmail: string;
   lindaSellingPrice: number;
+  walmartRetailPrice: number;
+  walmartFees: number;
+  walmartLink: string;
   clientProfit: number;
   clientROI: number;
   lindaProfit: number;
@@ -45,7 +48,6 @@ export interface Deal {
   snapshotPrice: number;
   snapshotClientROI: number;
   snapshotClientProfit: number;
-  walmartLink?: string;
 }
 
 export interface ClaimHistory {

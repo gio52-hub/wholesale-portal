@@ -358,6 +358,25 @@ function mapDealRecord(record: Airtable.Record<Airtable.FieldSet>): Deal {
     Array.isArray(leadTimeRaw) ? (leadTimeRaw as string[])[0] || "Ready to Ship" :
     "Ready to Ship";
 
+  // Get Walmart fields (lookup fields)
+  const walmartRetailPriceRaw = record.get("Walmart Retail Price");
+  const walmartRetailPrice = 
+    typeof walmartRetailPriceRaw === "number" ? walmartRetailPriceRaw :
+    Array.isArray(walmartRetailPriceRaw) ? (walmartRetailPriceRaw as unknown as number[])[0] || 0 :
+    0;
+
+  const walmartFeesRaw = record.get("Walmart Fees");
+  const walmartFees = 
+    typeof walmartFeesRaw === "number" ? walmartFeesRaw :
+    Array.isArray(walmartFeesRaw) ? (walmartFeesRaw as unknown as number[])[0] || 0 :
+    0;
+
+  const walmartLinkRaw = record.get("Walmart Link");
+  const walmartLink = 
+    typeof walmartLinkRaw === "string" ? walmartLinkRaw :
+    Array.isArray(walmartLinkRaw) ? (walmartLinkRaw as string[])[0] || "" :
+    "";
+
   return {
     id: record.id,
     dealId: (record.get("Deal ID") as number) || 0,
@@ -367,12 +386,15 @@ function mapDealRecord(record: Airtable.Record<Airtable.FieldSet>): Deal {
     clientName,
     clientEmail,
     lindaSellingPrice: (record.get("Linda's Selling Price") as number) || 0,
+    walmartRetailPrice,
+    walmartFees,
+    walmartLink,
     clientProfit: (record.get("Client's Profit") as number) || 0,
     clientROI: (record.get("Client's ROI (%)") as number) || 0,
     lindaProfit: (record.get("Linda's Profit") as number) || 0,
     lindaROI: (record.get("Linda's ROI (%)") as number) || 0,
-    unitsRemaining: (record.get("Units Remaining") as number) || 0,
-    leadTime: (record.get("Lead Time") as string) || "Ready to Ship",
+    unitsRemaining,
+    leadTime,
     claimedUnits: (record.get("Claimed Units") as number) || 0,
     claimDate: (record.get("Claim Date") as string) || "",
     claimStatus: (record.get("Claim Status") as string) || "Not Claimed",
@@ -416,6 +438,27 @@ function mapDealRecordFromRest(record: AirtableRecord): Deal {
     Array.isArray(leadTimeRaw) ? (leadTimeRaw as string[])[0] || "Ready to Ship" :
     "Ready to Ship";
 
+  // Get Walmart Retail Price (lookup field)
+  const walmartRetailPriceRaw = fields["Walmart Retail Price"];
+  const walmartRetailPrice = 
+    typeof walmartRetailPriceRaw === "number" ? walmartRetailPriceRaw :
+    Array.isArray(walmartRetailPriceRaw) ? (walmartRetailPriceRaw as number[])[0] || 0 :
+    0;
+
+  // Get Walmart Fees (lookup field)
+  const walmartFeesRaw = fields["Walmart Fees"];
+  const walmartFees = 
+    typeof walmartFeesRaw === "number" ? walmartFeesRaw :
+    Array.isArray(walmartFeesRaw) ? (walmartFeesRaw as number[])[0] || 0 :
+    0;
+
+  // Get Walmart Link (lookup field)
+  const walmartLinkRaw = fields["Walmart Link"];
+  const walmartLink = 
+    typeof walmartLinkRaw === "string" ? walmartLinkRaw :
+    Array.isArray(walmartLinkRaw) ? (walmartLinkRaw as string[])[0] || "" :
+    "";
+
   return {
     id: record.id,
     dealId: (fields["Deal ID"] as number) || 0,
@@ -425,6 +468,9 @@ function mapDealRecordFromRest(record: AirtableRecord): Deal {
     clientName,
     clientEmail,
     lindaSellingPrice: (fields["Linda's Selling Price"] as number) || 0,
+    walmartRetailPrice,
+    walmartFees,
+    walmartLink,
     clientProfit: (fields["Client's Profit"] as number) || 0,
     clientROI: (fields["Client's ROI (%)"] as number) || 0,
     lindaProfit: (fields["Linda's Profit"] as number) || 0,

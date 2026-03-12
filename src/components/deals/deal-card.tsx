@@ -12,6 +12,8 @@ import {
   TrendingUp,
   DollarSign,
   Clock,
+  ShoppingCart,
+  Receipt,
 } from "lucide-react";
 
 interface DealCardProps {
@@ -29,7 +31,7 @@ export default function DealCard({ deal }: DealCardProps) {
     <>
       <Card className="hover:shadow-lg transition-shadow duration-200 overflow-hidden">
         <CardContent className="pt-6">
-          {/* Product Name */}
+          {/* Product Name & Walmart Link */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center space-x-3">
               <div className="bg-primary-50 p-2.5 rounded-lg">
@@ -54,34 +56,60 @@ export default function DealCard({ deal }: DealCardProps) {
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-gray-50 p-3 rounded-lg">
+          {/* Walmart Retail Price - Highlighted */}
+          <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center text-blue-700 text-xs">
+                <ShoppingCart className="h-3.5 w-3.5 mr-1" />
+                Walmart Retail Price
+              </div>
+              <div className="text-lg font-bold text-blue-700">
+                ${deal.walmartRetailPrice?.toFixed(2) || "0.00"}
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Grid - 3 columns */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="bg-gray-50 p-2.5 rounded-lg">
               <div className="flex items-center text-gray-500 text-xs mb-1">
-                <DollarSign className="h-3.5 w-3.5 mr-1" />
+                <DollarSign className="h-3 w-3 mr-0.5" />
                 Your Cost
               </div>
-              <div className="text-xl font-bold text-gray-900">
+              <div className="text-lg font-bold text-gray-900">
                 ${deal.lindaSellingPrice?.toFixed(2) || "0.00"}
               </div>
             </div>
-            <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="bg-gray-50 p-2.5 rounded-lg">
               <div className="flex items-center text-gray-500 text-xs mb-1">
-                <TrendingUp className="h-3.5 w-3.5 mr-1" />
+                <Receipt className="h-3 w-3 mr-0.5" />
+                Est. Fees
+              </div>
+              <div className="text-lg font-bold text-gray-900">
+                ${deal.walmartFees?.toFixed(2) || "0.00"}
+              </div>
+            </div>
+            <div className="bg-gray-50 p-2.5 rounded-lg">
+              <div className="flex items-center text-gray-500 text-xs mb-1">
+                <TrendingUp className="h-3 w-3 mr-0.5" />
                 Your ROI
               </div>
               <div
-                className={`text-xl font-bold ${
+                className={`text-lg font-bold ${
                   (deal.clientROI || 0) >= 0 ? "text-green-600" : "text-red-600"
                 }`}
               >
                 {deal.clientROI?.toFixed(1) || "0"}%
               </div>
             </div>
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="text-gray-500 text-xs mb-1">Profit / Unit</div>
+          </div>
+
+          {/* Profit & Units Row */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-green-50 p-3 rounded-lg">
+              <div className="text-green-700 text-xs mb-1">Profit / Unit</div>
               <div
-                className={`text-lg font-semibold ${
+                className={`text-xl font-bold ${
                   (deal.clientProfit || 0) >= 0
                     ? "text-green-600"
                     : "text-red-600"
@@ -91,8 +119,8 @@ export default function DealCard({ deal }: DealCardProps) {
               </div>
             </div>
             <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="text-gray-500 text-xs mb-1">Units Left</div>
-              <div className="text-lg font-semibold text-gray-900 flex items-center">
+              <div className="text-gray-500 text-xs mb-1">Units Available</div>
+              <div className="text-xl font-bold text-gray-900 flex items-center">
                 {deal.unitsRemaining || 0}
                 {isLowStock && (
                   <Badge variant="destructive" className="ml-2 text-xs">
