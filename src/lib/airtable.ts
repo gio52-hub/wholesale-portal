@@ -118,17 +118,14 @@ export async function getProducts(): Promise<Product[]> {
     }
 
     return records.map((record) => {
-      // Get Internal Status - handle various possible field names
-      const internalStatusRaw = 
-        record.fields["Internal Status"] || 
-        record.fields["internal status"] ||
-        record.fields["InternalStatus"];
-      
-      const internalStatus = typeof internalStatusRaw === 'string' 
-        ? internalStatusRaw 
-        : Array.isArray(internalStatusRaw) 
-          ? String(internalStatusRaw[0] || '') 
-          : "Proposed / Potential";
+      // Get Internal Status directly - the field name is exactly "Internal Status"
+      const internalStatusValue = record.fields["Internal Status"];
+      const internalStatus = typeof internalStatusValue === 'string' && internalStatusValue.trim() !== ''
+        ? internalStatusValue
+        : "Proposed / Potential";
+
+      // Log each product's internal status for debugging
+      console.log(`Product: ${record.fields["Product Name"]}, Internal Status: "${internalStatus}"`);
 
       return {
         id: record.id,
