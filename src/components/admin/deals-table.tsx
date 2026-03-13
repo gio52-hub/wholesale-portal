@@ -74,6 +74,12 @@ export default function DealsTable({ deals }: DealsTableProps) {
     return Object.keys(uniqueMap).sort();
   }, [deals]);
 
+  // Helper to normalize field values (handle arrays from lookup fields)
+  const normalizeValue = (value: unknown): string => {
+    if (Array.isArray(value)) return String(value[0] || '').trim();
+    return String(value || '').trim();
+  };
+
   // Filter deals based on view and search
   const filteredDeals = useMemo(() => {
     let result = deals;
@@ -93,12 +99,12 @@ export default function DealsTable({ deals }: DealsTableProps) {
         break;
       case "by-client":
         if (selectedClient !== "all") {
-          result = result.filter(d => d.clientName === selectedClient);
+          result = result.filter(d => normalizeValue(d.clientName) === selectedClient);
         }
         break;
       case "by-product":
         if (selectedProduct !== "all") {
-          result = result.filter(d => d.productName === selectedProduct);
+          result = result.filter(d => normalizeValue(d.productName) === selectedProduct);
         }
         break;
     }
@@ -107,13 +113,14 @@ export default function DealsTable({ deals }: DealsTableProps) {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(d =>
-        d.productName?.toLowerCase().includes(term) ||
-        d.clientName?.toLowerCase().includes(term) ||
+        normalizeValue(d.productName).toLowerCase().includes(term) ||
+        normalizeValue(d.clientName).toLowerCase().includes(term) ||
         d.dealId?.toString().includes(term)
       );
     }
 
     return result;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deals, view, searchTerm, selectedClient, selectedProduct]);
 
   // Get counts for each view
