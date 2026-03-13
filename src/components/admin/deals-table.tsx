@@ -47,14 +47,31 @@ export default function DealsTable({ deals }: DealsTableProps) {
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
 
   // Get unique clients and products for dropdowns
+  // Handle cases where lookup fields might return arrays
   const clients = useMemo(() => {
-    const uniqueClients = Array.from(new Set(deals.map(d => d.clientName).filter(Boolean)));
-    return uniqueClients.sort();
+    const clientNames = deals.map(d => {
+      const name = d.clientName;
+      if (Array.isArray(name)) return String(name[0] || '').trim();
+      return String(name || '').trim();
+    }).filter(Boolean);
+    
+    // Use object to deduplicate (handles any edge cases with Set)
+    const uniqueMap: Record<string, boolean> = {};
+    clientNames.forEach(name => { uniqueMap[name] = true; });
+    return Object.keys(uniqueMap).sort();
   }, [deals]);
 
   const products = useMemo(() => {
-    const uniqueProducts = Array.from(new Set(deals.map(d => d.productName).filter(Boolean)));
-    return uniqueProducts.sort();
+    const productNames = deals.map(d => {
+      const name = d.productName;
+      if (Array.isArray(name)) return String(name[0] || '').trim();
+      return String(name || '').trim();
+    }).filter(Boolean);
+    
+    // Use object to deduplicate
+    const uniqueMap: Record<string, boolean> = {};
+    productNames.forEach(name => { uniqueMap[name] = true; });
+    return Object.keys(uniqueMap).sort();
   }, [deals]);
 
   // Filter deals based on view and search
