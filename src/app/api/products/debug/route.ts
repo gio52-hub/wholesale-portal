@@ -12,7 +12,8 @@ export async function GET() {
       );
     }
 
-    const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent("Master Inventory")}?maxRecords=1`;
+    // Fetch ALL products (not just 1) to see all Internal Status values
+    const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent("Master Inventory")}`;
     
     const response = await fetch(url, {
       headers: {
@@ -31,15 +32,32 @@ export async function GET() {
     }
 
     const data = await response.json();
-    const firstRecord = data.records?.[0];
+    const records = data.records || [];
+    
+    // Find all fields that contain "status" (case insensitive)
+    const firstRecord = records[0];
+    const statusFields = firstRecord 
+      ? Object.keys(firstRecord.fields).filter(k => k.toLowerCase().includes('status'))
+      : [];
+
+    // Get Internal Status for all products
+    const allInternalStatuses = records.map((r: { id: string; fields: Record<string, unknown> }) => ({
+      id: r.id,
+      productName: r.fields["Product Name"],
+      internalStatus: r.fields["Internal Status"],
+      allStatusFields: statusFields.reduce((acc: Record<string, unknown>, field: string) => {
+        acc[field] = r.fields[field];
+        return acc;
+      }, {}),
+    }));
     
     return NextResponse.json({
       success: true,
-      recordCount: data.records?.length || 0,
-      fieldNames: firstRecord ? Object.keys(firstRecord.fields) : [],
-      firstRecordFields: firstRecord?.fields || {},
-      internalStatusValue: firstRecord?.fields["Internal Status"],
-      internalStatusType: typeof firstRecord?.fields["Internal Status"],
+      recordCount: records.length,
+      allFieldNames: firstRecord ? Object.keys(firstRecord.fields).sort() : [],
+      statusRelatedFields: statusFields,
+      allProducts: allInternalStatuses,
+      rawFirstRecord: firstRecord?.fields,
     });
   } catch (error) {
     return NextResponse.json(

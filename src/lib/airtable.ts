@@ -62,6 +62,8 @@ async function fetchFromAirtable(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
+      cache: "no-store", // Always fetch fresh data
+      next: { revalidate: 0 }, // Disable Next.js caching
     });
 
     if (!response.ok) {
