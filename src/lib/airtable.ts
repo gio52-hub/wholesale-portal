@@ -108,21 +108,41 @@ export async function getProducts(): Promise<Product[]> {
     });
 
     console.log(`Fetched ${records.length} products from Master Inventory`);
+    
+    // Debug: Log first record's fields to see exact field names
+    if (records.length > 0) {
+      console.log("First product fields:", Object.keys(records[0].fields));
+      console.log("Internal Status value:", records[0].fields["Internal Status"]);
+    }
 
-    return records.map((record) => ({
-      id: record.id,
-      productName: (record.fields["Product Name"] as string) || "",
-      walmartLink: (record.fields["Walmart Link"] as string) || "",
-      walmartRetailPrice: (record.fields["Walmart Retail Price"] as number) || 0,
-      lindaActualCost: (record.fields["Linda's Actual Cost"] as number) || 0,
-      walmartFees: (record.fields["Walmart Fees"] as number) || 0,
-      unitsAvailable: (record.fields["Units Available"] as number) || 0,
-      unitsRemaining: (record.fields["Units Remaining"] as number) || 0,
-      leadTime: (record.fields["Lead Time"] as string) || "Ready to Ship",
-      status: (record.fields["Status"] as string) || "Active",
-      internalStatus: (record.fields["Internal Status"] as string) || "Proposed / Potential",
-      inventoryStatus: (record.fields["Inventory Status"] as string) || "Available",
-    }));
+    return records.map((record) => {
+      // Get Internal Status - handle various possible field names
+      const internalStatusRaw = 
+        record.fields["Internal Status"] || 
+        record.fields["internal status"] ||
+        record.fields["InternalStatus"];
+      
+      const internalStatus = typeof internalStatusRaw === 'string' 
+        ? internalStatusRaw 
+        : Array.isArray(internalStatusRaw) 
+          ? String(internalStatusRaw[0] || '') 
+          : "Proposed / Potential";
+
+      return {
+        id: record.id,
+        productName: (record.fields["Product Name"] as string) || "",
+        walmartLink: (record.fields["Walmart Link"] as string) || "",
+        walmartRetailPrice: (record.fields["Walmart Retail Price"] as number) || 0,
+        lindaActualCost: (record.fields["Linda's Actual Cost"] as number) || 0,
+        walmartFees: (record.fields["Walmart Fees"] as number) || 0,
+        unitsAvailable: (record.fields["Units Available"] as number) || 0,
+        unitsRemaining: (record.fields["Units Remaining"] as number) || 0,
+        leadTime: (record.fields["Lead Time"] as string) || "Ready to Ship",
+        status: (record.fields["Status"] as string) || "Active",
+        internalStatus: internalStatus,
+        inventoryStatus: (record.fields["Inventory Status"] as string) || "Available",
+      };
+    });
   } catch (error) {
     console.error("Error fetching products:", error);
     return [];
